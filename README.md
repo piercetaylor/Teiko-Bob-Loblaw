@@ -1,4 +1,4 @@
-This repo was created as a start to Teiko's Technical interview : Under Construction
+This repo was created as a start to Teiko's Technical interview
 
 
 Immune cell population data from Bob Loblaw at Loblaw Bio
@@ -37,6 +37,3 @@ Immune cell population data from Bob Loblaw at Loblaw Bio
 
                 How many subjects were males/females
         5. Dashboard for visualization
-
-
-

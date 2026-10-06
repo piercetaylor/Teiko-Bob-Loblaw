@@ -38,4 +38,3 @@ def subjects_from_rows(rows: list[dict]) -> dict[str, dict]:
                 f"subject {row['subject']} has inconsistent metadata: {seen} vs {record}"
             )
     return subjects
-
