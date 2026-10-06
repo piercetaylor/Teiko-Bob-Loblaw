@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
 from validate_csv import (
-    CSV_FILE,
+    CSV_PATH,
     ValidationError,
     check_counts,
     check_response_treatment,
@@ -66,4 +66,4 @@ def test_subject_metadata_accepts_repeats():
 
 
 def test_real_csv_is_valid():
-    validate(CSV_FILE)
+    validate(CSV_PATH)

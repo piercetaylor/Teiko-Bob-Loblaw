@@ -12,7 +12,7 @@ from validate_csv import POPULATIONS, SUBJECT_COLUMNS, ValidationError, validate
 ROOT = Path(__file__).resolve().parent
 CSV_FILE = ROOT / "cell-count.csv"
 SCHEMA_FILE = ROOT / "schema.sql"
-DB_FILE = ROOT / "cell_counts.db"
+DB_FILE = ROOT / "cell-count.db"
 
 
 def collapse_subjects(rows: list[dict]) -> dict[tuple[str, str], dict]:
