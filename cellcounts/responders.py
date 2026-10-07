@@ -85,7 +85,7 @@ def compare(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
         if responder.empty or non_responder.empty:
             raise ValueError(f"{population}: one response group has no observations")
 
-        u, p_value = mannwhitneyu(responder, non_responder, alternative="two-sided")
+        test = mannwhitneyu(responder, non_responder, alternative="two-sided")
         rows.append(
             {
                 "population": population,
@@ -94,14 +94,16 @@ def compare(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
                 "median_responder": responder.median(),
                 "median_non_responder": non_responder.median(),
                 "median_difference": responder.median() - non_responder.median(),
-                "rank_biserial": 2 * u / (len(responder) * len(non_responder)) - 1,
-                "p_value": p_value,
+                "rank_biserial": 2 * test.statistic / (len(responder) * len(non_responder)) - 1,
+                "p_value": test.pvalue,
             }
         )
-    """BH correction is applied."""
+
+    # Benjamini-Hochberg across the five populations.
     out = pd.DataFrame(rows)
     out["p_adjusted"] = false_discovery_control(out["p_value"], method="bh")
-    out["significant"] = out["p_adjusted"] < alpha
+    # BH rejects where p <= (k/m)q, so <= is appropriate.
+    out["significant"] = out["p_adjusted"] <= alpha
     return out[COMPARISON_COLUMNS]
 
 
