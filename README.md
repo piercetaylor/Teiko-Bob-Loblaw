@@ -5,6 +5,7 @@ Immune cell population data from Bob Loblaw at Loblaw Bio
     - File is cell-count.csv, has metadata
     - To understand how his drug candidate affects immune cell populations:
         - design python program to follow 4 analysis steps:
+       
         
         1. Design SQL database
             - SQLite
@@ -14,7 +15,6 @@ Immune cell population data from Bob Loblaw at Loblaw Bio
         2. What is the frequency of each cell type in each sample?
             Display summary:
                 sample: the sample id as in column sample in cell-count.csv
-
                 total_count: total cell count of sample
 
                 population: name of the immune cell population (e.g. b_cell, cd8_t_cell, etc.)
