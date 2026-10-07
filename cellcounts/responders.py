@@ -3,8 +3,24 @@ import sqlite3
 from collections.abc import Iterable
 
 import pandas as pd
+from scipy.stats import false_discovery_control, mannwhitneyu
 
 from cellcounts.db import population_order
+
+ALPHA = 0.05
+
+COMPARISON_COLUMNS = [
+    "population",
+    "n_responder",
+    "n_non_responder",
+    "median_responder",
+    "median_non_responder",
+    "median_difference",
+    "rank_biserial",
+    "p_value",
+    "p_adjusted",
+    "significant",
+]
 
 _COHORT_QUERY = """
 SELECT d.subject_id, d.sample, d.response, d.time_from_treatment_start,
@@ -47,3 +63,52 @@ def subject_means(df: pd.DataFrame) -> pd.DataFrame:
     return df.groupby(
         ["subject_id", "response", "population"], as_index=False, observed=True
     )[["percentage"]].mean()
+
+
+def _populations(df: pd.DataFrame) -> list[str]:
+    """Populations in display order, from the categorical set (if exists)."""
+    if isinstance(df["population"].dtype, pd.CategoricalDtype):
+        return list(df["population"].cat.categories)
+    return list(dict.fromkeys(df["population"]))
+
+
+def compare(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
+    """Two-sided Mann-Whitney U per population, Benjamini-Hochberg corrected."""
+    rows = []
+    for population in _populations(df):
+        at = df.loc[df["population"] == population]
+        responder = at.loc[at["response"] == "yes", "percentage"]
+        non_responder = at.loc[at["response"] == "no", "percentage"]
+        if responder.empty or non_responder.empty:
+            raise ValueError(f"{population}: one response group has no observations")
+
+        u, p_value = mannwhitneyu(responder, non_responder, alternative="two-sided")
+        rows.append(
+            {
+                "population": population,
+                "n_responder": len(responder),
+                "n_non_responder": len(non_responder),
+                "median_responder": responder.median(),
+                "median_non_responder": non_responder.median(),
+                "median_difference": responder.median() - non_responder.median(),
+                "rank_biserial": 2 * u / (len(responder) * len(non_responder)) - 1,
+                "p_value": p_value,
+            }
+        )
+    """BH correction is applied."""
+    out = pd.DataFrame(rows)
+    out["p_adjusted"] = false_discovery_control(out["p_value"], method="bh")
+    out["significant"] = out["p_adjusted"] < alpha
+    return out[COMPARISON_COLUMNS]
+
+
+def summarize(conn: sqlite3.Connection, alpha: float = ALPHA) -> pd.DataFrame:
+    """The primary comparison, pooled samples, and day 0 only."""
+    cohort = cohort_frequencies(conn)
+    runs = {
+        "subject means (primary)": subject_means(cohort),
+        "pooled samples (sensitivity)": cohort,
+        "day 0 only (sensitivity)": cohort.loc[cohort["time_from_treatment_start"] == 0],
+    }
+    stacked = [compare(frame, alpha).assign(run=name) for name, frame in runs.items()]
+    return pd.concat(stacked, ignore_index=True)[["run", *COMPARISON_COLUMNS]]
