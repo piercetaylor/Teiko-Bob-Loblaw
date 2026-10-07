@@ -6,6 +6,7 @@ Immune cell population data from Bob Loblaw at Loblaw Bio
     - To understand how his drug candidate affects immune cell populations:
         - design python program to follow 4 analysis steps:
        
+        
         1. Design SQL database
             - SQLite
             - load_data.py in root to
