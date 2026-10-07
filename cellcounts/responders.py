@@ -3,11 +3,14 @@ import sqlite3
 from collections.abc import Iterable
 
 import pandas as pd
+import plotly.graph_objects as go
 from scipy.stats import false_discovery_control, mannwhitneyu
 
 from cellcounts.db import population_order
 
 ALPHA = 0.05
+
+RESPONSE_NAMES = {"yes": "Responder", "no": "Non-responder"}
 
 COMPARISON_COLUMNS = [
     "population",
@@ -112,3 +115,31 @@ def summarize(conn: sqlite3.Connection, alpha: float = ALPHA) -> pd.DataFrame:
     }
     stacked = [compare(frame, alpha).assign(run=name) for name, frame in runs.items()]
     return pd.concat(stacked, ignore_index=True)[["run", *COMPARISON_COLUMNS]]
+
+
+def boxplot(
+    df: pd.DataFrame, labels: dict[str, str] | None = None, title: str | None = None
+) -> go.Figure:
+    """Relative frequency by population, responders vs non-responders."""
+    labels = labels or {}
+    fig = go.Figure()
+    for response, name in RESPONSE_NAMES.items():
+        group = df.loc[df["response"] == response]
+        fig.add_trace(
+            go.Box(
+                x=[labels.get(p, p) for p in group["population"]],
+                y=group["percentage"],
+                name=name,
+            )
+        )
+    fig.update_layout(
+        boxmode="group",
+        template="plotly_white",
+        title=title,
+        yaxis_title="Relative frequency (%)",
+    )
+    fig.update_xaxes(
+        categoryorder="array",
+        categoryarray=[labels.get(p, p) for p in _populations(df)],
+    )
+    return fig
