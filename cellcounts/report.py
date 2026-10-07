@@ -1,9 +1,9 @@
-"""Print the Part 2 and Part 3 results and write them to outputs/."""
+"""Print the Part 2, 3 and 4 results and write them to outputs/."""
 from contextlib import closing
 
 import pandas as pd
 
-from cellcounts import frequencies, responders
+from cellcounts import baseline, frequencies, responders
 from cellcounts.db import OUTPUT_DIR, connect_readonly, population_labels
 
 
@@ -18,6 +18,12 @@ def main() -> None:
         comparison = responders.summarize(conn)
         cohort = responders.cohort_frequencies(conn)
         labels = population_labels(conn)
+        samples = baseline.baseline_samples(conn)
+        counts = [
+            baseline.samples_per_project(conn),
+            baseline.subjects_per_response(conn),
+            baseline.subjects_per_sex(conn),
+        ]
 
     print("Part 2: relative frequency of each population in each sample (first 20 rows)")
     print(table.head(20).to_string(index=False))
@@ -34,6 +40,13 @@ def main() -> None:
         title="Melanoma PBMC on miraclib: responders vs non-responders (subject means)",
     )
     fig.write_html(OUTPUT_DIR / "responders_boxplot.html")
+
+    print("\nPart 4: melanoma PBMC samples at baseline from subjects treated with miraclib")
+    print(f"{len(samples)} samples written to {OUTPUT_DIR / 'baseline_samples.csv'}")
+    samples.to_csv(OUTPUT_DIR / "baseline_samples.csv", index=False)
+    for frame in counts:
+        print()
+        print(frame.to_string(index=False))
 
 
 if __name__ == "__main__":
