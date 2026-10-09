@@ -190,7 +190,7 @@ def part3(data: dict) -> None:
         f"No population remains significant after Benjamini-Hochberg adjustment for {n_pops} tests. **{label}s differ before adjustment** "
         f"(p = {top['p_value']:.3f}, adjusted p = {top['p_adjusted']:.3f}), with a {direction} median relative frequency in responders. "
         "Each population is compared with a two-sided Mann-Whitney U test, chosen before the data were inspected "
-        f"(see Methods), and the {n_pops} p-values were then Benjamini-Hochberg adjusted. A Welch t-test on the same subject means "
+        f"(see Methods), and the {n_pops} p-values were then Benjamini-Hochberg adjusted.\n\nA Welch t-test on the same subject means "
         f"would call {label}s significant (adjusted p = {top['welch_p_adjusted']:.3f}), so that result depends on the choice of test. "
         f"The {label} difference is a hypothesis for new data, not a finding. The primary subject-mean comparison mixes "
         "pre-treatment and on-treatment samples, so it tests association; the day 0 only run is the predictive one, and its "

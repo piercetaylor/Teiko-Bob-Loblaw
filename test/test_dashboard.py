@@ -21,7 +21,7 @@ def test_tabs_and_headline(app):
         "Baseline cohort (Part 4)",
     ]
     assert [h.value for h in app.subheader] == [
-        "How is the trial data stored?",
+        "Loblaw Bio: How does miraclib affect immune cell populations?",
         "Trial data: SQLite database built from cell-count.csv",
         "What is the frequency of each cell type within each sample?",
         "Which cell populations differ between miraclib responders and non-responders?",
