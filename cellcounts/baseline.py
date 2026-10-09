@@ -42,3 +42,18 @@ def subjects_per_sex(conn: sqlite3.Connection) -> pd.DataFrame:
         + "GROUP BY sex ORDER BY sex"
     )
     return pd.read_sql_query(sql, conn)
+
+
+def male_responder_b_cell_mean(conn: sqlite3.Connection) -> float:
+    """Mean baseline B cell count for male melanoma responders, any sample type or treatment."""
+    sql = """
+    SELECT ROUND(AVG(c.count), 2)
+    FROM cell_counts c
+    JOIN sample_detail d ON d.sample = c.sample
+    WHERE c.population = 'b_cell'
+      AND d.condition = 'melanoma'
+      AND d.sex = 'M'
+      AND d.response = 'yes'
+      AND d.time_from_treatment_start = 0
+    """
+    return conn.execute(sql).fetchone()[0]
