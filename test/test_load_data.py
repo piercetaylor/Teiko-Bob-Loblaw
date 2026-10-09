@@ -86,3 +86,19 @@ def test_build_database_matches_real_csv(tmp_path):
     ).fetchone()[0]
     assert quiz == 10206.15
     conn.close()
+
+
+def test_script_runs_without_arguments_and_builds_db_in_its_root(tmp_path):
+    import shutil
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    for name in ("load_data.py", "validate_csv.py", "schema.sql", "cell-count.csv"):
+        shutil.copy(root / name, tmp_path / name)
+    for _ in range(2):  # second run replaces the first database cleanly
+        result = subprocess.run([sys.executable, "load_data.py"], cwd=tmp_path, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "OK: loaded 10500 rows" in result.stdout
+    assert (tmp_path / "cell-count.db").exists()
+    assert not (tmp_path / "cell-count.tmp").exists()
+    with sqlite3.connect(tmp_path / "cell-count.db") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM samples").fetchone()[0] == 10500

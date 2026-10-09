@@ -47,3 +47,16 @@ def test_male_responder_b_cell_mean(real_conn, make_conn, row):
         row(sample="lung", subject="s6", condition="lung", b_cell="1"),
     ])
     assert baseline.male_responder_b_cell_mean(conn) == 200.0
+
+
+def test_subject_counts_are_distinct_per_subject(make_conn, row):
+    # Two baseline PBMC samples from one subject must count once as a subject and twice as samples.
+    conn = make_conn([
+        row(sample="a", b_cell="100"),
+        row(sample="b", b_cell="300"),
+        row(sample="c", subject="s2", sex="F", response="no", b_cell="1"),
+    ])
+    assert baseline.samples_per_project(conn)["samples"].sum() == 3
+    assert baseline.subjects_per_response(conn).set_index("response")["subjects"].to_dict() == {"yes": 1, "no": 1}
+    assert baseline.subjects_per_sex(conn).set_index("sex")["subjects"].to_dict() == {"F": 1, "M": 1}
+    assert baseline.male_responder_b_cell_mean(conn) == 200.0  # averaged over samples, not subjects
