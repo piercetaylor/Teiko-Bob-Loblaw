@@ -30,19 +30,24 @@ def test_total_count_is_sum_of_counts(real_conn):
 
 
 def test_rows_follow_sort_order_not_alphabetical(real_conn):
-    first = frequencies.frequency_table(real_conn, ["sample00000"])
+    first = frequencies.frequency_table(real_conn)
+    first = first[first["sample"] == "sample00000"]
     assert list(first["population"]) == POPULATIONS
 
 
-def test_samples_filter(make_conn, row):
-    conn = make_conn([row(sample="a"), row(sample="b", subject="s2"), row(sample="c", subject="s3")])
-    assert set(frequencies.frequency_table(conn, ["a", "c"])["sample"]) == {"a", "c"}
-    assert frequencies.frequency_table(conn, []).empty
-
-
 def test_percentage_of_known_counts(make_conn, row):
-    conn = make_conn([row(b_cell="25", cd8_t_cell="25", cd4_t_cell="25", nk_cell="25", monocyte="0")])
+    conn = make_conn([row(b_cell="25", cd8_t_cell="50", cd4_t_cell="75", nk_cell="50", monocyte="0")])
     table = frequencies.frequency_table(conn).set_index("population")
-    assert table.loc["b_cell", "percentage"] == 25.0
+    assert table.loc["b_cell", "percentage"] == 12.5
+    assert table.loc["cd8_t_cell", "percentage"] == 25.0
+    assert table.loc["cd4_t_cell", "percentage"] == 37.5
     assert table.loc["monocyte", "percentage"] == 0.0
-    assert (table["total_count"] == 100).all()
+    assert (table["total_count"] == 200).all()
+
+
+def test_frequency_detail_adds_sample_metadata(real_conn):
+    detail = frequencies.frequency_detail(real_conn)
+    assert len(detail) == 10500 * 5
+    assert list(detail.columns[:5]) == frequencies.COLUMNS
+    assert set(detail["sample_type"]) == {"PBMC", "WB"}
+    assert detail["response"].isna().sum() > 0

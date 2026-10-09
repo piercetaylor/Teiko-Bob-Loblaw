@@ -1,6 +1,5 @@
 """Part 2: relative frequency of each cell population within each sample."""
 import sqlite3
-from collections.abc import Iterable
 
 import pandas as pd
 
@@ -10,20 +9,25 @@ _QUERY = """
 SELECT f.sample, f.total_count, f.population, f.count, f.percentage
 FROM sample_frequencies f
 JOIN populations p ON p.population = f.population
-{where}
 ORDER BY f.sample, p.sort_order
 """
 
 
-def frequency_table(
-    conn: sqlite3.Connection, samples: Iterable[str] | None = None
-) -> pd.DataFrame:
+def frequency_table(conn: sqlite3.Connection) -> pd.DataFrame:
     """One row per sample and population, as a percentage of that sample's total."""
-    if samples is None:
-        return pd.read_sql_query(_QUERY.format(where=""), conn)
+    return pd.read_sql_query(_QUERY, conn)
 
-    samples = list(samples)
-    if not samples:
-        return pd.DataFrame(columns=COLUMNS)
-    where = "WHERE f.sample IN ({})".format(",".join("?" * len(samples)))
-    return pd.read_sql_query(_QUERY.format(where=where), conn, params=samples)
+
+_DETAIL_QUERY = """
+SELECT f.sample, f.total_count, f.population, f.count, f.percentage,
+       d.condition, d.treatment, d.sample_type, d.time_from_treatment_start, d.response
+FROM sample_frequencies f
+JOIN sample_detail d ON d.sample = f.sample
+JOIN populations p ON p.population = f.population
+ORDER BY f.sample, p.sort_order
+"""
+
+
+def frequency_detail(conn: sqlite3.Connection) -> pd.DataFrame:
+    """The frequency table with the sample metadata needed to filter it."""
+    return pd.read_sql_query(_DETAIL_QUERY, conn)

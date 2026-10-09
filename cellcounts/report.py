@@ -28,8 +28,8 @@ def main() -> None:
 
     print("Part 2: relative frequency of each population in each sample (first 20 rows)")
     print(table.head(20).to_string(index=False))
-    print(f"\n{len(table)} rows written to {OUTPUT_DIR / 'frequencies.csv'}\n")
     table.to_csv(OUTPUT_DIR / "frequencies.csv", index=False)
+    print(f"\n{len(table)} rows written to {OUTPUT_DIR / 'frequencies.csv'}\n")
 
     print("Part 3: responders vs non-responders, melanoma, miraclib, PBMC")
     print(comparison.to_string(index=False))

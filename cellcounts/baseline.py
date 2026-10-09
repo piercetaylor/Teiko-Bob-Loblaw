@@ -1,4 +1,7 @@
-"""Part 4: melanoma PBMC samples at baseline from subjects treated with miraclib."""
+"""Part 4: melanoma PBMC samples at baseline from subjects treated with miraclib.
+
+Also the bonus mean baseline B cell count for male melanoma responders.
+"""
 import sqlite3
 
 import pandas as pd
@@ -14,7 +17,7 @@ WHERE condition = 'melanoma'
 
 def baseline_samples(conn: sqlite3.Connection) -> pd.DataFrame:
     """Every baseline sample with its project, response and sex."""
-    sql = "SELECT sample, subject_id, project, response, sex " + _BASELINE + "ORDER BY sample"
+    sql = "SELECT sample, subject, project, response, sex " + _BASELINE + "ORDER BY sample"
     return pd.read_sql_query(sql, conn)
 
 
@@ -44,7 +47,7 @@ def subjects_per_sex(conn: sqlite3.Connection) -> pd.DataFrame:
     return pd.read_sql_query(sql, conn)
 
 
-def male_responder_b_cell_mean(conn: sqlite3.Connection) -> float:
+def male_responder_b_cell_mean(conn: sqlite3.Connection) -> float | None:
     """Mean baseline B cell count for male melanoma responders, any sample type or treatment."""
     sql = """
     SELECT ROUND(AVG(c.count), 2)

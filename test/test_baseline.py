@@ -3,9 +3,9 @@ from cellcounts import baseline
 
 def test_baseline_samples(real_conn):
     samples = baseline.baseline_samples(real_conn)
-    assert list(samples.columns) == ["sample", "subject_id", "project", "response", "sex"]
+    assert list(samples.columns) == ["sample", "subject", "project", "response", "sex"]
     assert len(samples) == 656
-    assert samples["subject_id"].is_unique
+    assert samples["subject"].is_unique
 
 
 def test_samples_per_project(real_conn):

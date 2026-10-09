@@ -1,6 +1,5 @@
 """Part 3: population frequencies of responders against non-responders."""
 import sqlite3
-from collections.abc import Iterable
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -37,23 +36,13 @@ WHERE d.condition = 'melanoma'
   AND d.treatment = 'miraclib'
   AND d.sample_type = 'PBMC'
   AND d.response IN ('yes', 'no')
-  {timepoints}
 ORDER BY d.subject_id, d.time_from_treatment_start, p.sort_order
 """
 
 
-def cohort_frequencies(
-    conn: sqlite3.Connection, timepoints: Iterable[int] | None = None
-) -> pd.DataFrame:
-    """Melanoma PBMC samples under miraclib having a recorded response. """
-    if timepoints is None:
-        sql, params = _COHORT_QUERY.format(timepoints=""), []
-    else:
-        params = [int(t) for t in timepoints]
-        clause = "AND d.time_from_treatment_start IN ({})".format(",".join("?" * len(params)))
-        sql = _COHORT_QUERY.format(timepoints=clause)
-
-    df = pd.read_sql_query(sql, conn, params=params)
+def cohort_frequencies(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Melanoma PBMC samples under miraclib having a recorded response."""
+    df = pd.read_sql_query(_COHORT_QUERY, conn)
     df["population"] = pd.Categorical(
         df["population"], categories=population_order(conn), ordered=True
     )
@@ -61,17 +50,14 @@ def cohort_frequencies(
 
 
 def subject_means(df: pd.DataFrame) -> pd.DataFrame:
-    """Average each subject's percentages across their 3 samples.
-
-    Every subject contributes 3 samples, one for each of the time points.
-    """
+    """Average each subject's percentages across its samples."""
     return df.groupby(
         ["subject_id", "response", "population"], as_index=False, observed=True
     )[["percentage"]].mean()
 
 
 def _populations(df: pd.DataFrame) -> list[str]:
-    """Populations in display order, from the categorical set (if exists)."""
+    """Populations in display order, from the categorical set if present."""
     if isinstance(df["population"].dtype, pd.CategoricalDtype):
         return list(df["population"].cat.categories)
     return list(dict.fromkeys(df["population"]))
@@ -102,12 +88,11 @@ def compare(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
             }
         )
 
-    # Benjamini-Hochberg across the five populations.
     out = pd.DataFrame(rows)
     out["p_adjusted"] = false_discovery_control(out["p_value"], method="bh")
     # BH rejects where p <= (k/m)q, so <= is appropriate.
     out["significant"] = out["p_adjusted"] <= alpha
-    # Welch's t-test is reported alongside as a check on the test chosen, not the test...
+    # Welch's t-test is reported alongside as a sensitivity check and does not drive `significant`.
     out["welch_p_adjusted"] = false_discovery_control(out["welch_p"], method="bh")
     return out[COMPARISON_COLUMNS]
 
@@ -125,7 +110,7 @@ def summarize(conn: sqlite3.Connection, alpha: float = ALPHA) -> pd.DataFrame:
 
 
 def by_timepoint(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
-    """compare() within each day; one sample per subject per day, so samples are the unit."""
+    """compare() within each day; each subject has one sample per day, so the sample is the unit."""
     days = sorted(df["time_from_treatment_start"].unique())
     stacked = [compare(df.loc[df["time_from_treatment_start"] == d], alpha).assign(day=d) for d in days]
     return pd.concat(stacked, ignore_index=True)[["day", *COMPARISON_COLUMNS]]

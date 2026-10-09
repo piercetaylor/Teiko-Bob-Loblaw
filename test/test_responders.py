@@ -24,12 +24,6 @@ def test_cohort_excludes_other_samples(make_conn, row):
     assert set(responders.cohort_frequencies(conn)["sample"]) == {"keep"}
 
 
-def test_timepoints_filter(real_conn):
-    day0 = responders.cohort_frequencies(real_conn, timepoints=[0])
-    assert set(day0["time_from_treatment_start"]) == {0}
-    assert day0["sample"].nunique() == 656
-
-
 def test_subject_means_one_row_per_subject_and_population(real_conn):
     means = responders.subject_means(responders.cohort_frequencies(real_conn))
     assert len(means) == 656 * 5
