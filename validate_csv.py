@@ -30,13 +30,19 @@ def load_rows(csv_path: Path) -> list[dict]:
 
 
 def check_counts(rows: list[dict]) -> None:
+    """Counts, age and day must be non-negative integers; sex M or F; sample ids unique."""
+    seen = set()
     for row in rows:
-        for pop in POPULATIONS:
-            value = row[pop]
-            if not value.isdigit():
+        for col in [*POPULATIONS, "age", "time_from_treatment_start"]:
+            if not row[col].isdecimal():
                 raise ValidationError(
-                    f"sample {row['sample']}: {pop}={value!r} is not a non-negative integer"
+                    f"sample {row['sample']}: {col}={row[col]!r} is not a non-negative integer"
                 )
+        if row["sex"] not in ("M", "F"):
+            raise ValidationError(f"sample {row['sample']}: invalid sex {row['sex']!r}")
+        if row["sample"] in seen:
+            raise ValidationError(f"duplicate sample id {row['sample']!r}")
+        seen.add(row["sample"])
 
 
 def check_response_treatment(rows: list[dict]) -> None:

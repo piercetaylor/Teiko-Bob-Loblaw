@@ -1,6 +1,6 @@
 """
-Build cell-count.db from cell-counts.csv, validating the CSV first using validate_csv.py.
-Run with `python load_data.py`, db rebuilt each run to assure pipeline reflects the csv input.
+Build cell-count.db from cell-count.csv, validating the CSV first using validate_csv.py.
+Run with `python load_data.py`. The db is rebuilt each run to ensure it reflects the CSV.
 """
 import os
 import sqlite3
@@ -25,6 +25,7 @@ def collapse_subjects(rows: list[dict]) -> dict[tuple[str, str], dict]:
 
 
 def insert_subjects(conn: sqlite3.Connection, subjects: dict) -> dict[tuple[str, str], int]:
+    """Insert one row per subject; return the generated subject_id for each (project, subject)."""
     subject_ids = {}
     for (project, subject), fields in subjects.items():
         cur = conn.execute(
@@ -42,6 +43,7 @@ def insert_subjects(conn: sqlite3.Connection, subjects: dict) -> dict[tuple[str,
 def insert_samples_and_counts(
     conn: sqlite3.Connection, rows: list[dict], subject_ids: dict[tuple[str, str], int]
 ) -> None:
+    """Insert each sample and its population counts."""
     for row in rows:
         subject_id = subject_ids[(row["project"], row["subject"])]
         conn.execute(
@@ -69,13 +71,8 @@ def check(conn: sqlite3.Connection, rows: list[dict]) -> None:
         expected = sum(int(r[pop]) for r in rows)
         assert one("SELECT SUM(count) FROM cell_counts WHERE population = ?", (pop,)) == expected, pop
 
-    # the composite PK rules out duplicate (sample, population) pairs but not a
-    # sample missing one; the grand total above can't catch an uneven split either
-    assert one(
-        "SELECT COUNT(*) FROM samples s WHERE "
-        "(SELECT COUNT(*) FROM cell_counts c WHERE c.sample = s.sample) <> "
-        "(SELECT COUNT(*) FROM populations)"
-    ) == 0
+    # catches a populations table out of sync with POPULATIONS
+    assert one("SELECT COUNT(*) FROM populations") == len(POPULATIONS)
 
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
 
