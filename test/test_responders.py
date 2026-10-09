@@ -85,6 +85,8 @@ def test_primary_comparison_matches_known_values(real_conn):
     assert out.loc["cd4_t_cell", "p_adjusted"] == pytest.approx(0.06211, rel=1e-3)
     assert out.loc["cd4_t_cell", "rank_biserial"] == pytest.approx(0.1128, rel=1e-3)
     assert not out["significant"].any()
+    assert out.loc["cd4_t_cell", "welch_p"] == pytest.approx(0.00452, rel=1e-2)
+    assert out.loc["cd4_t_cell", "welch_p_adjusted"] == pytest.approx(0.0226, rel=1e-2)
 
 
 def test_summarize_runs(real_conn):
@@ -107,3 +109,25 @@ def test_boxplot_has_two_traces_in_population_order(real_conn):
     fig = responders.boxplot(responders.subject_means(cohort), {"b_cell": "B cell"})
     assert [t.name for t in fig.data] == ["Responder", "Non-responder"]
     assert list(fig.layout.xaxis.categoryarray)[:2] == ["B cell", "cd8_t_cell"]
+
+
+def test_significant_follows_mann_whitney_not_welch(real_conn):
+    # Synthetic: an outlier makes Welch miss a difference that every rank sees.
+    out = responders.compare(_two_groups([1, 2, 3, 4, 5, 6, 7, 8], [9, 10, 11, 12, 13, 14, 15, 400])).iloc[0]
+    assert out["p_adjusted"] <= 0.05 < out["welch_p_adjusted"]
+    assert out["significant"]
+    # Real data: the tests disagree the other way on CD4, and the flag still follows Mann-Whitney.
+    cohort = responders.cohort_frequencies(real_conn)
+    cd4 = responders.compare(responders.subject_means(cohort)).set_index("population").loc["cd4_t_cell"]
+    assert cd4["welch_p_adjusted"] <= 0.05 < cd4["p_adjusted"]
+    assert not cd4["significant"]
+
+
+def test_by_timepoint_one_block_per_day(real_conn):
+    out = responders.by_timepoint(responders.cohort_frequencies(real_conn))
+    assert list(out.columns) == ["day", *responders.COMPARISON_COLUMNS]
+    assert out["day"].value_counts().to_dict() == {0: 5, 7: 5, 14: 5}
+    assert (out[["n_responder", "n_non_responder"]] == [331, 325]).all().all()
+    day0 = out[out["day"] == 0].set_index("population")
+    assert day0["p_adjusted"].min() == pytest.approx(0.8853, rel=1e-3)
+    assert out.loc[out["p_value"].idxmin(), "day"] != 0

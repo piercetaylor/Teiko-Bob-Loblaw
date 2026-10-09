@@ -4,7 +4,7 @@ from collections.abc import Iterable
 
 import pandas as pd
 import plotly.graph_objects as go
-from scipy.stats import false_discovery_control, mannwhitneyu
+from scipy.stats import false_discovery_control, mannwhitneyu, ttest_ind
 
 from cellcounts.db import population_order
 
@@ -23,6 +23,8 @@ COMPARISON_COLUMNS = [
     "p_value",
     "p_adjusted",
     "significant",
+    "welch_p",
+    "welch_p_adjusted",
 ]
 
 _COHORT_QUERY = """
@@ -59,9 +61,9 @@ def cohort_frequencies(
 
 
 def subject_means(df: pd.DataFrame) -> pd.DataFrame:
-    """Average each subject's percentages across their own samples.
+    """Average each subject's percentages across their 3 samples.
 
-    Every subject contributes three samples, one for each of the time points at days 0, 7 and 14.
+    Every subject contributes 3 samples, one for each of the time points.
     """
     return df.groupby(
         ["subject_id", "response", "population"], as_index=False, observed=True
@@ -96,6 +98,7 @@ def compare(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
                 "median_difference": responder.median() - non_responder.median(),
                 "rank_biserial": 2 * test.statistic / (len(responder) * len(non_responder)) - 1,
                 "p_value": test.pvalue,
+                "welch_p": ttest_ind(responder, non_responder, equal_var=False).pvalue,
             }
         )
 
@@ -104,6 +107,8 @@ def compare(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
     out["p_adjusted"] = false_discovery_control(out["p_value"], method="bh")
     # BH rejects where p <= (k/m)q, so <= is appropriate.
     out["significant"] = out["p_adjusted"] <= alpha
+    # Welch's t-test is reported alongside as a check on the test chosen, not the test...
+    out["welch_p_adjusted"] = false_discovery_control(out["welch_p"], method="bh")
     return out[COMPARISON_COLUMNS]
 
 
@@ -117,6 +122,13 @@ def summarize(conn: sqlite3.Connection, alpha: float = ALPHA) -> pd.DataFrame:
     }
     stacked = [compare(frame, alpha).assign(run=name) for name, frame in runs.items()]
     return pd.concat(stacked, ignore_index=True)[["run", *COMPARISON_COLUMNS]]
+
+
+def by_timepoint(df: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
+    """compare() within each day; one sample per subject per day, so samples are the unit."""
+    days = sorted(df["time_from_treatment_start"].unique())
+    stacked = [compare(df.loc[df["time_from_treatment_start"] == d], alpha).assign(day=d) for d in days]
+    return pd.concat(stacked, ignore_index=True)[["day", *COMPARISON_COLUMNS]]
 
 
 def boxplot(
