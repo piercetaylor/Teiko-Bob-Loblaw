@@ -285,6 +285,9 @@ def part4(data: dict) -> None:
 def main() -> None:
     """Lay out the four parts of the project as tabs, with a panel about the results beside them."""
     st.set_page_config(page_title="Loblaw Bio immune cell counts", page_icon=":material/biotech:", layout="wide")
+    if not DB_FILE.exists():
+        import load_data
+        load_data.main()
     try:
         data = load()
     except FileNotFoundError:
