@@ -4,13 +4,13 @@ Bob Loblaw is running a clinical trial on a drug candidate, miraclib, and wants 
 populations. The trial data includes 10,500 samples from 3,500 patients in `cell-count.csv`, with counts
 for 5 cell populations: B cells, CD8 T cells, CD4 T cells, NK cells and monocytes.
 
-Dashboard: _STREAMLIT_LINK_TO_BE_ADDED_.
+Dashboard: <https://piercetaylor-teiko-bob-loblaw.streamlit.app/>
 
 The dashboard also runs locally at <http://localhost:8501> with `make dashboard`.
 
 ## Running it
 
-Python 3.12. The Makefile uses `python3`, which is what GitHub Codespaces provides.
+Python 3.14. The Makefile uses `python3`, which is what GitHub Codespaces provides.
 
 ```sh
 make setup      # pip install -r requirements.txt
