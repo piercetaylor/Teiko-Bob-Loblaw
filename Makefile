@@ -10,7 +10,7 @@ pipeline:
 	$(PYTHON) -m cellcounts.report
 
 dashboard:
-	$(PYTHON) -m streamlit run dashboard.py
+	$(PYTHON) -m streamlit run dashboard.py --server.headless true
 
 test:
 	$(PYTHON) -m pytest test/ -q

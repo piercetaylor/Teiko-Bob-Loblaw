@@ -1,10 +1,18 @@
+import csv
+import shutil
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from load_data import CSV_FILE, POPULATIONS, build_database, collapse_subjects
+from validate_csv import validate
+
+ROOT = Path(__file__).resolve().parent.parent
 
 BASE_ROW = {
     "project": "prj1", "subject": "s1", "condition": "melanoma", "age": "50",
@@ -61,8 +69,6 @@ def test_build_database_healthy_subject_response_is_null(tmp_path):
 
 
 def test_build_database_matches_real_csv(tmp_path):
-    from validate_csv import validate
-
     rows = validate(CSV_FILE)
     db_path = tmp_path / "cell_counts.db"
     build_database(rows, db_path)
@@ -86,3 +92,29 @@ def test_build_database_matches_real_csv(tmp_path):
     ).fetchone()[0]
     assert quiz == 10206.15
     conn.close()
+
+
+def test_script_runs_without_arguments_and_builds_db_in_its_root(tmp_path):
+    for name in ("load_data.py", "validate_csv.py", "schema.sql", "cell-count.csv"):
+        shutil.copy(ROOT / name, tmp_path / name)
+    for _ in range(2):  # second run replaces the first database cleanly
+        result = subprocess.run([sys.executable, "load_data.py"], cwd=tmp_path, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "OK: loaded 10500 rows" in result.stdout
+    assert (tmp_path / "cell-count.db").exists()
+    assert not (tmp_path / "cell-count.tmp").exists()
+    with sqlite3.connect(tmp_path / "cell-count.db") as conn:
+        assert conn.execute("SELECT COUNT(*) FROM samples").fetchone()[0] == 10500
+
+
+@pytest.mark.parametrize("bad", [{"sex": "X"}, {"sample": "smp1"}, {"age": "-5"}])
+def test_invalid_csv_exits_nonzero_with_invalid_message(tmp_path, bad):
+    for name in ("load_data.py", "validate_csv.py", "schema.sql"):
+        shutil.copy(ROOT / name, tmp_path / name)
+    with open(tmp_path / "cell-count.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(BASE_ROW))
+        writer.writeheader()
+        writer.writerows([row(), row(subject="s2", **{"sample": "smp2", **bad})])
+    result = subprocess.run([sys.executable, "load_data.py"], cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode != 0
+    assert "INVALID:" in result.stderr
